@@ -2,120 +2,106 @@
 #include <graphics.h>
 #include <conio.h>
 
-#define TOP 8    // 1000
-#define BOTTOM 4 // 0100
-#define RIGHT 2  // 0010
-#define LEFT 1   // 0001
+int Xmin = 40, Ymin = 40;     // Clip Window
+int Xmax = 100, Ymax = 100;
 
-int WXmax = 300, WYmax = 300, WXmin = 100, WYmin = 100;
+#define ABOVE    8    // Regions
+#define BELOW    4
+#define RIGHT    2
+#define LEFT     1
 
-int regionCode(float x, float y){
+int calcCode(int x, int y){
   int code = 0;
 
-  if (y > WYmax) code |= TOP;
-  if (y < WYmin) code |= BOTTOM;
-  if (x > WXmax) code |= RIGHT;
-  if (x < WXmin) code |= LEFT;
+  if (y > Ymax) code |= ABOVE;
+  if (y < Ymin) code |= BELOW;
+  if (x > Xmax) code |= RIGHT;
+  if (x < Xmin) code |= LEFT;
 
   return code;
 }
 
-void clipLine(float x1, float y1, float x2, float y2){
-  float x, y, xn, yn, m;
-  int rcode1, rcode2, outCode, accept = 0;
+int ClipLine(int x1, int y1, int x2, int y2){
+  int rcodeP1, rcodeP2, outCode;
+  int accept = 0, done = 0;
+  float fx1 = x1, fy1 = y1, fx2 = x2, fy2 = y2, m;
+  int xclip, yclip;
 
-  rcode1 = regionCode(x1, y1);
-  rcode2 = regionCode(x2, y2);
+  rcodeP1 = calcCode(fx1, fy1);
+  rcodeP2 = calcCode(fx2, fy2);
 
-  while (1){
-    if ((rcode1 | rcode2) == 0){
-      // Accept the line completely
-      printf("Line is completely within the window, accepted as is.\n");
+  do{
+    if ((rcodeP1 | rcodeP2) == 0){        // Trivial accept
       accept = 1;
-      break;
-    }
-    else if ((rcode1 & rcode2) != 0){
-      // Discard the line completely
-      printf("Line is completely outside the window, discarded completely.\n");
-      break;
-    }
-    else{
-      if (rcode1 != 0){
-        outCode = rcode1;
-        xn = x1;
-        yn = y1;
-      }
-      else{
-        outCode = rcode2;
-        xn = x2;
-        yn = y2;
+      done = 1;
+    } else if ((rcodeP1 & rcodeP2) != 0){ // Trivial reject
+      done = 1;
+    } else{
+      if (rcodeP1 != 0)  outCode = rcodeP1;
+      else  outCode = rcodeP2;
+
+      m = (fy2 - fy1)/(fx2 - fx1);        // Calculate slope
+
+      // Find the edge the endpoint is intersecting with and calculate the intersection point
+      if (outCode & ABOVE){
+        xclip = (int)(fx1 + (Ymax - fy1)/m);
+        yclip = Ymax;
+      } else if (outCode & BELOW){
+        xclip = (int)(fx1 + (Ymin - fy1)/m);
+        yclip = Ymin;
+      } else if (outCode & RIGHT){
+        yclip = (int)(fy1 + m*(Xmax - fx1));
+        xclip = Xmax;
+      } else if (outCode & LEFT){
+        yclip = (int)(fy1 + m*(Xmin - fx1));
+        xclip = Xmin;
       }
 
-      m = (y2 - y1) / (x2 - x1);
-      if (outCode & TOP){
-        y = WYmax;
-        x = (y - yn + m * xn) / m;
-      }
-      else if (outCode & BOTTOM){
-        y = WYmin;
-        x = (y - yn + m * xn) / m;
-      }
-      else if (outCode & RIGHT){
-        x = WXmax;
-        y = m * (x - xn) + yn;
-      }
-      else if (outCode & LEFT){
-        x = WXmin;
-        y = m * (x - xn) + yn;
+      // Replace the point that was outside
+      if (outCode == rcodeP1){
+        fx1 = xclip;
+        fy1 = yclip;
+      } else{
+        fx2 = xclip;
+        fy2 = yclip;
       }
 
-      if (outCode == rcode1){
-        x1 = x;
-        y1 = y;
-        rcode1 = regionCode(x1, y1);
-      }
-      else{
-        x2 = x;
-        y2 = y;
-        rcode2 = regionCode(x2, y2);
-      }
+      // Update the region codes for the new points
+      rcodeP1 = calcCode(fx1, fy1);
+      rcodeP2 = calcCode(fx2, fy2);
     }
-  }
+  } while(!done);
 
   if (accept){
-    printf("Clipped line in RED.\n");
-    setcolor(RED);
-    line((int)x1, (int)y1, (int)x2, (int)y2);
+    // Draw the cliped line
+    setcolor(YELLOW);
+    line((int)fx1, (int)fy1, (int)fx2, (int)fy2);
   }
+  return 0;
 }
 
-int main(){
+void main(){
   int gd = DETECT, gm;
-  float x1, y1, x2, y2;
-
   initgraph(&gd, &gm, "C:\\TURBOC3\\BGI");
 
-  printf("Enter (x1, y1): ");
-  scanf("%f %f", &x1, &y1);
+  rectangle(Xmin, Ymin, Xmax, Ymax);    // Draw the clip window
 
-  printf("Enter (x2, y2): ");
-  scanf("%f %f", &x2, &y2);
-
-  // printf("Enter (WXmin, WYmin): ");
-  // scanf("%f %f", &WXmin, &WYmin);
-
-  // printf("Enter (WXmax, WYmax): ");
-  // scanf("%f %f", &WXmax, &WYmax);
-
-  rectangle(WXmin, WYmin, WXmax, WYmax);
-
-  printf("Original line in WHITE\n");
-  line((int)x1, (int)y1, (int)x2, (int)y2);
-
+  setcolor(WHITE);
+  line(10, 10, 70, 70);
+  line(10, 90, 70, 100);
+  line(90, 10, 100, 70);
+  line(-20, -10, -10, -50);
+  line(40, 40, 100, 100);
+  line(-10, 10, 90, 70);
   getch();
-  clipLine((int)x1, (int)y1, (int)x2, (int)y2);
 
+  ClipLine(10, 10, 70, 70);
+  ClipLine(10, 90, 70, 100);
+  ClipLine(90, 10, 100, 70);
+  ClipLine(-20, -10, -10, -50);
+  ClipLine(40, 40, 100, 100);
+  ClipLine(-10, 10, 90, 70);
   getch();
+
   closegraph();
-  return 0;
 }
