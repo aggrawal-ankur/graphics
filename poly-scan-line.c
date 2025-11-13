@@ -15,7 +15,7 @@ void scanLineFill(struct Point poly[], int n, int fill_color) {
   int y_min = poly[0].y;
   int y_max = poly[0].y;
   int y_start, y_end, x_start, x_end, temp;
-  float m_inv, x_intersect;
+  float m_inv, x_int;
 
   // 1. Find Y_min and Y_max (global extremes of the polygon)
   for (i = 1; i < n; i++) {
@@ -28,7 +28,7 @@ void scanLineFill(struct Point poly[], int n, int fill_color) {
 
   // 2. Iterate through each scan line (Y) from bottom to top
   for (y = y_min; y <= y_max; y++) {
-    int intersections[20]; // Array to store intersection X-coordinates (arbitrary max size)
+    int intersecs[20];     // Array to store intersection X-coordinates (arbitrary max size)
     int k = 0;             // Intersection count for the current scan line
 
     // 3. Find intersection points (X-coordinates)
@@ -47,7 +47,6 @@ void scanLineFill(struct Point poly[], int n, int fill_color) {
       }
 
       // Check if the scan line (y) intersects the edge [P_i, P_j]
-      // We use 'y_start <= y < y_end' to properly handle shared vertices.
       if (y >= y_start && y < y_end) {
         // Ignore perfectly horizontal edges
         if (y_end == y_start) continue;
@@ -56,17 +55,16 @@ void scanLineFill(struct Point poly[], int n, int fill_color) {
         m_inv = (float)(x_end - x_start) / (float)(y_end - y_start);
 
         // Calculate X intersection: x = x_start + (y - y_start) * m_inv
-        x_intersect = x_start + (y - y_start) * m_inv;
+        x_int = x_start + (y - y_start) * m_inv;
 
         // Store the rounded integer X intersection (add 0.5 for rounding)
-        intersections[k++] = (int)(x_intersect + 0.5); 
+        intersecs[k++] = (int)(x_int + 0.5); 
       }
     }
 
     // 4. Sort the intersection points
     if (k > 0) {
-      // k should always be even for a closed polygon if handled correctly
-      qsort(intersections, k, sizeof(int), compareIntersec);
+      qsort(intersecs, k, sizeof(int), compareIntersec);
 
       // 5. Fill the segments: draw lines between consecutive pairs
       // (x0 to x1), (x2 to x3), etc.
@@ -74,7 +72,7 @@ void scanLineFill(struct Point poly[], int n, int fill_color) {
         if (p + 1 < k) {
           // Draw a horizontal line segment (the fill)
           delay(50);
-          line(intersections[p], y, intersections[p + 1], y);
+          line(intersecs[p], y, intersecs[p + 1], y);
         }
       }
     }
@@ -88,7 +86,7 @@ void main() {
     {300, 300}, // P2
     {150, 300}  // P3
   };
-  int num_vertices = 4;
+  int n_vert = 4;
   
   int gd = DETECT, gm;
   initgraph(&gd, &gm, "C:\\TURBOC3\\BGI"); 
@@ -98,7 +96,7 @@ void main() {
   line(300, 300, 150, 300);
   line(150, 300, 100, 100);
 
-  scanLineFill(polygon, num_vertices, RED);
+  scanLineFill(polygon, n_vert, RED);
 
   getch();
   closegraph();
